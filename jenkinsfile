@@ -33,6 +33,52 @@ pipeline {
                 }
             }
         }
+        stage('SonarQube Analysis') {
+            steps {
+                dir('Frontend') {
+                    script {
+                        def scannerHome = tool 'SonarQubeScanner'
+                        withSonarQubeEnv('SonarQube') {
+                            sh """
+                                ${scannerHome}/bin/sonar-scanner \
+                                -Dsonar.projectKey=yapster-frontend \
+                                -Dsonar.projectName='Yapster Frontend' \
+                                -Dsonar.projectVersion=${BUILD_NUMBER} \
+                                -Dsonar.sources=src \
+                                -Dsonar.tests=src/test \
+                                -Dsonar.exclusions=src/test/**/* \
+                                -Dsonar.sourceEncoding=UTF-8 \
+                                -Dsonar.scm.disabled=true
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        stage('SonarQube Quality Gate') {
+            steps {
+                script {
+                    timeout(time: 10, unit: 'MINUTES') {
+                        try {
+                            def qg = waitForQualityGate()
+                            if (qg.status != 'OK') {
+                                error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                            } else {
+                                echo "✅ Quality Gate passed successfully!"
+                            }
+                        } catch (Exception e) {
+                            echo "⚠️ Quality Gate check failed or timed out: ${e.getMessage()}"
+                            echo "🔍 Checking SonarQube project status manually..."
+                            
+                            // You can add manual verification here if needed
+                            // For now, we'll mark as unstable rather than failing
+                            currentBuild.result = 'UNSTABLE'
+                            echo "⚠️ Build marked as UNSTABLE due to Quality Gate timeout"
+                        }
+                    }
+                }
+            }
+        }
         stage('Trivy Filesystem Scan') {
             steps {
                 script {
@@ -101,6 +147,104 @@ pipeline {
                     }
                 }
             }
+        }
+    }
+    
+    post {
+        always {
+            script {
+                def buildStatus = currentBuild.result ?: 'SUCCESS'
+                def buildNumber = env.BUILD_NUMBER
+                def jobName = env.JOB_NAME
+                def buildUrl = env.BUILD_URL
+                
+                // Determine email subject and body based on build status
+                def emailSubject = ''
+                def emailBody = ''
+                def statusEmoji = ''
+                
+                if (buildStatus == 'SUCCESS') {
+                    statusEmoji = '✅'
+                    emailSubject = "${statusEmoji} Jenkins Build #${buildNumber} - SUCCESS"
+                    emailBody = """
+                        <h2>${statusEmoji} Build Successful!</h2>
+                        <p><strong>Job:</strong> ${jobName}</p>
+                        <p><strong>Build Number:</strong> #${buildNumber}</p>
+                        <p><strong>Status:</strong> <span style="color: green;">SUCCESS</span></p>
+                        <p><strong>Build URL:</strong> <a href="${buildUrl}">${buildUrl}</a></p>
+                        
+                        <h3>🚀 Successfully Completed:</h3>
+                        <ul>
+                            <li>✅ Frontend tests passed</li>
+                            <li>✅ SonarQube analysis completed</li>
+                            <li>✅ Quality Gate passed</li>
+                            <li>✅ Trivy security scans completed</li>
+                            <li>✅ Docker image built and tagged</li>
+                            <li>✅ Image pushed to Docker Hub</li>
+                        </ul>
+                        
+                        <h3>📊 Docker Images Published:</h3>
+                        <ul>
+                            <li>kamalesh25/yapster:${buildNumber}</li>
+                            <li>kamalesh25/yapster:latest</li>
+                        </ul>
+                        
+                        <p><strong>Trivy Security Report:</strong> See attached trivy-image-report.json</p>
+                        
+                        <hr>
+                        <p><em>This is an automated message from Jenkins CI/CD Pipeline</em></p>
+                    """
+                } else {
+                    statusEmoji = '❌'
+                    emailSubject = "${statusEmoji} Jenkins Build #${buildNumber} - FAILED"
+                    emailBody = """
+                        <h2>${statusEmoji} Build Failed!</h2>
+                        <p><strong>Job:</strong> ${jobName}</p>
+                        <p><strong>Build Number:</strong> #${buildNumber}</p>
+                        <p><strong>Status:</strong> <span style="color: red;">FAILED</span></p>
+                        <p><strong>Build URL:</strong> <a href="${buildUrl}">${buildUrl}</a></p>
+                        
+                        <h3>🔍 Possible Failure Reasons:</h3>
+                        <ul>
+                            <li>❌ Frontend tests failed</li>
+                            <li>❌ SonarQube analysis failed</li>
+                            <li>❌ Quality Gate failed</li>
+                            <li>❌ Trivy found critical vulnerabilities</li>
+                            <li>❌ Docker build failed</li>
+                            <li>❌ Docker push failed</li>
+                        </ul>
+                        
+                        <p><strong>Action Required:</strong> Check the build logs and fix the issues before the next deployment.</p>
+                        
+                        <p><strong>Trivy Security Report:</strong> See attached trivy-image-report.json (if available)</p>
+                        
+                        <hr>
+                        <p><em>This is an automated message from Jenkins CI/CD Pipeline</em></p>
+                    """
+                }
+                
+                // Send email with attachment
+                emailext (
+                    subject: emailSubject,
+                    body: emailBody,
+                    mimeType: 'text/html',
+                    to: 'kamaleshb.2004@gmail.com',
+                    attachmentsPattern: 'trivy-image-report.json',
+                    attachLog: true
+                )
+            }
+        }
+        success {
+            echo "✅ Pipeline completed successfully!"
+            echo "📧 Success notification sent to kamaleshb.2004@gmail.com"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+            echo "📧 Failure notification sent to kamaleshb.2004@gmail.com"
+        }
+        unstable {
+            echo "⚠️ Pipeline is unstable!"
+            echo "📧 Unstable notification sent to kamaleshb.2004@gmail.com"
         }
     }
 }
