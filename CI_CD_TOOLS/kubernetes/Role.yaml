@@ -1,0 +1,73 @@
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: yapster
+  name: jenkins-namespace-role
+  labels:
+    app: jenkins
+    component: role
+  annotations:
+    description: "Namespace-specific permissions for Jenkins within yapster namespace"
+rules:
+# Core API resources within namespace
+- apiGroups: [""]
+  resources:
+    - services
+    - endpoints
+    - pods
+    - pods/exec
+    - pods/log
+    - pods/portforward
+    - configmaps
+    - secrets
+    - persistentvolumeclaims
+    - events
+    - serviceaccounts
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# Apps API group within namespace
+- apiGroups: ["apps"]
+  resources:
+    - deployments
+    - deployments/scale
+    - replicasets
+    - statefulsets
+    - daemonsets
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# Extensions API group within namespace
+- apiGroups: ["extensions"]
+  resources:
+    - deployments
+    - deployments/scale
+    - replicasets
+    - ingresses
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# Networking within namespace
+- apiGroups: ["networking.k8s.io"]
+  resources:
+    - ingresses
+    - networkpolicies
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# Autoscaling within namespace
+- apiGroups: ["autoscaling"]
+  resources:
+    - horizontalpodautoscalers
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# Batch jobs within namespace
+- apiGroups: ["batch"]
+  resources:
+    - jobs
+    - cronjobs
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# RBAC within namespace (limited)
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources:
+    - roles
+    - rolebindings
+  verbs: ["get", "list", "watch"]

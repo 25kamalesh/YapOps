@@ -1,0 +1,19 @@
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jenkins-namespace-binding
+  namespace: yapster
+  labels:
+    app: jenkins
+    component: rolebinding
+  annotations:
+    description: "Binds Jenkins service account to namespace-specific permissions"
+subjects:
+- kind: ServiceAccount
+  name: jenkins
+  namespace: yapster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jenkins-namespace-role
