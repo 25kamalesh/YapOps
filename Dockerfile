@@ -31,10 +31,13 @@ RUN npm ci --only=production
 COPY Backend/ ./
 
 # Copy built frontend from previous stage to match Server.js path expectation
-COPY --from=frontend-build /app/frontend/dist ../Frontend/dist
+COPY --from=frontend-build /app/frontend/dist ./Frontend/dist
 
 # Expose port 4000 (fixed port, not variable)
 EXPOSE 4000
+
+# prometheus metrics port
+EXPOSE 9100
 
 # Start the application
 CMD ["node", "src/Server.js"]

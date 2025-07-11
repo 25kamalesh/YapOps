@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yapster-config
+  namespace: yapster
+data:
+  MONGO_URI: "mongodb://<username>:<password>@mongodb-statefulset-0.mongo.yapster.svc.cluster.local:27017,mongodb-statefulset-1.mongo.yapster.svc.cluster.local:27017,mongodb-statefulset-2.mongo.yapster.svc.cluster.local:27017/yapster?replicaSet=yapster-replica-set&readPreference=secondaryPreferred&authSource=admin"
+  JWT_EXPIRES_IN: "7d"
+  NODE_ENV: "production"
+  PORT: "4000"

@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yapster-backend
+  namespace: yapster
+  labels:
+    app: yapster-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: yapster-backend
+  template:
+    metadata:
+      labels:
+        app: yapster-backend
+    spec:
+      containers:
+      - name: yapster-backend
+        image: kamalesh25/yap-test:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 4000
+        env:
+        # Environment variables from ConfigMap
+        - name: MONGO_URI
+          valueFrom:
+            configMapKeyRef:
+              name: yapster-config
+              key: MONGO_URI
+        - name: JWT_EXPIRES_IN
+          valueFrom:
+            configMapKeyRef:
+              name: yapster-config
+              key: JWT_EXPIRES_IN
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: yapster-config
+              key: NODE_ENV
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: yapster-config
+              key: PORT
+        
+        # Environment variables from Secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: yapster-secrets
+              key: JWT_SECRET
+        - name: CLOUDINARY_CLOUD_NAME
+          valueFrom:
+            secretKeyRef:
+              name: yapster-secrets
+              key: CLOUDINARY_CLOUD_NAME
+        - name: CLOUDINARY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: yapster-secrets
+              key: CLOUDINARY_API_KEY
+        - name: CLOUDINARY_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: yapster-secrets
+              key: CLOUDINARY_API_SECRET
+      
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yapster-backend-service
+  namespace: yapster
+spec:
+  selector:
+    app: yapster-backend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 4000
+  type: ClusterIP

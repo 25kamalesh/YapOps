@@ -4,9 +4,14 @@ pipeline {
         nodejs 'node.js'
     }
     environment {
-        IMAGE_NAME = 'kamalesh25/yapster'
+        IMAGE_NAME = 'kamalesh25/yap-test'
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
+    
+    triggers {
+        githubPush()
+    }
+
     stages {
         stage('Git Repo Fetch') {
             steps {
@@ -148,8 +153,23 @@ pipeline {
                 }
             }
         }
+        stage('Deploy to Kubernetes') {
+            steps {
+                withKubeConfig(caCertificate: '', clusterName: 'yapster.pbktech.online', contextName: '', credentialsId: 'kubernets-token', namespace: 'yapster', restrictKubeConfigAccess: false, serverUrl: 'https://api.yapster.pbktech.online') {
+                    sh " kubectl apply -f CI_CD_TOOLS/kubernetes/main/yapster-deployment.yaml"
+                    sh "kubectl rollout restart deployment/yapster-backend -n yapster"
+                }
+            }
+        }
+        stage('Verify Kube Deployment') {
+            steps {
+                withKubeConfig(caCertificate: '', clusterName: 'yapster.pbktech.online', contextName: '', credentialsId: 'kubernets-token', namespace: 'yapster', restrictKubeConfigAccess: false, serverUrl: 'https://api.yapster.pbktech.online') {
+                    sh "kubectl rollout status deployment/yapster-backend -n yapster"
+                }
+            }
+        }
     }
-    
+
     post {
         always {
             script {
